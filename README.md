@@ -6,8 +6,7 @@ Data set and R code for running stochastic character mapping to reconstruct the 
 1. Make an new folder that will be the working directory and specify its path here
 setwd("/Users/christiandamsgaard/Dropbox/Projects/Air-breathing review_full/")                    
 
-2. Download, unzip and paste "Complete “all-taxon assembled” chronograms" from "https://fishtreeoflife.org/downloads/" into the working directory. 
-   This file should be named "actinopt_full.trees".
+2. Download, unzip and paste "Complete “all-taxon assembled” chronograms" and "PFC_short_classification.csv" from "https://fishtreeoflife.org/downloads/" into the working directory. 
 
 3. Download and paste "Data Set 1.xlsx" into the working directory. 
 
