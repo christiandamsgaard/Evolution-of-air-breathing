@@ -6,7 +6,7 @@ Data set and R code for running stochastic character mapping to reconstruct the 
 1. Make an new folder that will be the working directory and specify its path here
 setwd("/Users/christiandamsgaard/Dropbox/Projects/Air-breathing review_full/")                    
 
-2. Download, unzip and paste "Complete “all-taxon assembled” chronograms" and "PFC_short_classification.csv" from "https://fishtreeoflife.org/downloads/" into the working directory. 
+2. Download, unzip and paste "Complete “all-taxon assembled” chronograms" and "PFC_short_classification.csv" from "https://fishtreeoflife.org/downloads/" into the working directory. To save time, you can further download the maximum clade credibility tree "mcc.nexus", and outputs from sections 1 and 3 called "times_bpp_Organ.txt","counts_bpp_Organ.txt","times_bpp_LS.txt","counts_bpp_LS.txt"
 
 3. Download and paste "Data Set 1.xlsx" into the working directory. 
 
