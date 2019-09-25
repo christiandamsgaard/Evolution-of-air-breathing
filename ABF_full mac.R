@@ -4,6 +4,7 @@
 ###########################################################################
 
 
+
 ###########################################
 #### READ ME BEFORE RUNNING THE SCRIPT ####
 ###########################################
@@ -60,13 +61,14 @@ keep.tip                 <- function(tree,tip) {
 }
 
 
-
-
 ## IMPORT PHYLOGENIES ##
 # Load basal sarcopterygean phylogeny (source Betancur-R 2017)
 sarc                     <-read.tree(text="(Latimeria_chalumnae:409.4,(Neoceratodus_forsteri:241.804369,(Protopterus_aethiopicus_annectens:103.2,Lepidosiren_paradoxa:103.2)100:138.604369)100:167.595631)58;")
 sarc$root.edge           <-424.8-409.4 
-
+elas                     <-read.tree(text = "(Hydrolagus:399.3989352,(((Scyliorhinus:139.3745,Mustelus:139.3745)29:59.6255,Squalus:199)39:65.67780412,Dasyatis:264.6778041)140:134.7211311);")
+elas$root.edge           <-63.00106
+agna                     <-read.tree(text = "(Myxine:470.51250000,(Lampetra:16.00000000,Petromyzon:16.00000000)'14':454.51250000);")
+agna$root.edge           <-144.4875
 
 # Import 100 versions of the actinopterygean phylogeny
 trees                    <-read.tree(file = "actinopt_full.trees")                                 # Import 100 BPP trees from the working directory (can be downloaded from https://fishtreeoflife.org)
@@ -74,10 +76,23 @@ trees                    <-read.tree(file = "actinopt_full.trees")              
 
 # Bind sarcopterygean phylogeny to each BPP tree
 for (i in 1:100) {
+  
   hor <- as.data.frame(tree_layout(trees[[i]])$edgeDT)                                             # Data frame with the divergence times of all branches in phylogeny
   crown<-max(max(hor$xright)-hor$xleft)                                                            # The root node time
   trees[[i]]$root.edge<-100                                                                        # Add root note edge length
   trees[[i]]<-bind.tree(trees[[i]],sarc,position = 424.8-crown)                                    # Add the sarcopterygean (sarc) tree each BPP tree
+  
+  hor <- as.data.frame(tree_layout(trees[[i]])$edgeDT)                                             # Data frame with the divergence times of all branches in phylogeny
+  crown<-max(max(hor$xright)-hor$xleft)                                                            # The root node time
+  trees[[i]]$root.edge<-100                                                                        # Add root note edge length
+  trees[[i]]<-bind.tree(trees[[i]],elas,position = 462.4-crown)                                    # Add the sarcopterygean (sarc) tree each BPP tree
+  
+  hor <- as.data.frame(tree_layout(trees[[i]])$edgeDT)                                             # Data frame with the divergence times of all branches in phylogeny
+  crown<-max(max(hor$xright)-hor$xleft)                                                            # The root node time
+  trees[[i]]$root.edge<-200                                                                        # Add root note edge length
+  trees[[i]]<-bind.tree(trees[[i]],agna,position = 615-crown)                                    # Add the sarcopterygean (sarc) tree each BPP tree
+
+  
 }
 
 
@@ -108,14 +123,36 @@ species                  <- as.data.frame(mcc$tip.label)                        
 colnames(species)        <- c("Names")                                                  
 a                        <- cSplit(indt = species,splitCols = "Names", sep="_", type.convert=FALSE)# Separate genus and species name
 genera                   <- unique(a$Names_1)                                                      # Vector with all genus names
-
 ge_tree                  <- keep.tip(mcc,mcc$tip.label[match(genera,a$Names_1)])                   # Prune tree to only represent 1 species per genera
-
 tip.labels               <- as.data.frame(ge_tree$tip.label); colnames(tip.labels)<-c("Names")     # Load all species names from the genus level BPP tree
 tip.labels               <- cSplit(indt = tip.labels,splitCols ="Names",sep="_",type.convert=FALSE)# Separate genus and species name
 ge_tree$tip.label        <- tip.labels$Names_1                                                     # Use only the genus name as tip label
 ge_tree                  <- ladderize(ge_tree)                                                     # Ladderize the tree
 
+
+# add shark phylogeny from timetree.org
+elas                     <-read.tree(text = "(Hydrolagus:399.3989352,(((Scyliorhinus:139.3745,Mustelus:139.3745)29:59.6255,Squalus:199)39:65.67780412,Dasyatis:264.6778041)140:134.7211311);")
+hor                      <-as.data.frame(tree_layout(elas)$edgeDT);elas_crown<-max(max(hor$xright)-hor$xleft) # Get coordinates of the shark tree
+elas_oste_sarc_dt        <-462.4                                                                   # Divergence time between bony fishes and sharks.
+elas$root.edge           <-elas_oste_sarc_dt-elas_crown                                            # Root node length
+hor                      <-as.data.frame(tree_layout(ge_tree)$edgeDT)                              # Get coordinates on the bony fish tree
+oste_crown               <-max(max(hor$xright)-hor$xleft)                                          # Root node age of the bony fish tree
+ge_tree$root.edge        <-462.4-424.8                                                             # Root node length of the bony fish tree
+ge_tree                     <-bind.tree(ge_tree,                                                   # Merge bony fish tree and shark tree
+                                     elas,
+                                     position = elas_oste_sarc_dt-oste_crown)
+
+# add agnathan phylogeny (from timetree)
+agna                     <-read.tree(text = "(Myxine:470.51250000,(Lampetra:16.00000000,Petromyzon:16.00000000)'14':454.51250000);")
+hor                      <-as.data.frame(tree_layout(agna)$edgeDT);agna_crown<-max(max(hor$xright)-hor$xleft) # Get coordinates of the agnatha tree
+agna_elas_oste_sarc_dt   <-615                                                                     # Divergence time between agnatha and sharks.
+agna$root.edge           <-agna_elas_oste_sarc_dt-agna_crown                                       # Root node length of agnatha tree
+hor                      <-as.data.frame(tree_layout(ge_tree)$edgeDT)                              # Get coordinates on the shark+bony fish tree
+gnat_crown               <-max(max(hor$xright)-hor$xleft)                                          # Root node age of the shark+bony fish tree
+ge_tree$root.edge           <-agna_elas_oste_sarc_dt-462.4                                         # Root node length of the shark+bony fish tree
+ge_tree                     <-bind.tree(ge_tree,                                                   # Merge shark+bony fish tree and agnatha tree                                                   
+                                     agna,
+                                     position = agna_elas_oste_sarc_dt-462.4)
 
 
 
@@ -162,7 +199,7 @@ for (i in 1:length(genus)) {
                                   "Aq")                                                            # else assign aquatic (Aq) as lifestyle (LS)
 }     
 
-# Generate named vectors for the 4 characters
+# Generate named vectors for the four characters
 AW                       <- setNames(df$AW,df$genus)
 AW_bi                    <- setNames(df$AW_bi,df$genus)
 Organ                    <- setNames(df$Organ,df$genus)
@@ -177,13 +214,23 @@ species                  <- sub("_", "\\ ",species)                             
 species                  <- sub("_", "\\ ",species)                                               # Separate genus and species by space (to remove double underscores)
 tax                      <- read.csv("PFC_short_classification.csv")                              # Load the fish taxonomy
 
-# Add taxonomy of basal sarcopterygeans
+# Add taxonomy data to basal sarcopterygeans, sharks and agnathans
 tax2<-as.data.frame(rbind(c("Coelacanthiformes", "Latimeriidae","Latimeria","Latimeria chalumnae"),
                           c("Ceratodontiformes","Neoceratodontidae","Neoceratodus","Neoceratodus forsteri"),
                           c("Lepidosireniformes","Protopteridae","Protopterus","Protopterus aethiopicus annectens"),
-                          c("Lepidosireniformes","Lepidosirenidae","Lepidosiren","Lepidosiren paradoxa")))
-colnames(tax2)<-colnames(tax)
-tax<-rbind(tax2,tax)
+                          c("Lepidosireniformes","Lepidosirenidae","Lepidosiren","Lepidosiren paradoxa"),
+                          c("Chimaeriformes","Chimaeridae", "Hydrolagus","Hydrolagus affinis"),
+                          c("Carcharhiniformes","Scyliorhinidae","Scyliorhinus","Scyliorhinus canicula"),
+                          c("Carcharhiniformes","Triakidae","Mustelus","Mustelus asterias"),
+                          c("Squaliformes","Squalidae","Squalus","Squalus acanthias"),
+                          c("Myliobatiformes","Dasyatidae","Dasyatis","Dasyatis marmorata"),
+                          c("Myxiniformes","Myxinidae","Myxine","Myxine glutinosa"),
+                          c("Petromyzontiformes","Petromyzontidae","Lampetra","Lampetra fluviatilis"),
+                          c("Petromyzontiformes","Petromyzontidae","Petromyzon","Petromyzon marinus")     
+                          )
+                    )
+colnames(tax2)           <-colnames(tax)
+tax                      <-rbind(tax2,tax) 
 
 ##################################################################
 #### QUESITONS ON AIR-BREATHING AND AMPHIBIOUS FISH DIVERSITY ####
@@ -193,7 +240,7 @@ tax<-rbind(tax2,tax)
 # How many species of air-breathing fishes?
 unique(species)
 length(unique(species))
-# Result: 680 species
+# Result: 656 species
 
 
 # How many genera of air-breating fishes?
@@ -207,7 +254,7 @@ length(unique(genera))
 families<-tax[match(species,tax$genus.species),2]
 unique(families)
 length(unique(families))
-# Result: 40 families
+# Result: 41 families
 
 
 # How many orders of air-breating fishes?
@@ -303,9 +350,10 @@ S
 # Requires around 1.5 GB of available memory, and takes around 48 hours. 
 # The output of the loop is the files "counts_bpp_Organ.txt" and "times_bpp_Organ.txt" (available on GitHub)
 # that contains the transition counts and transition timing, respectively, from each loop.
+
 nsim                     <- 100                                                                    # Number of simulations per BPP tree
 model                    <- "ER"                                                                   # Set model for character evolution to equal rates model
-counts_bpp_Organ               <- matrix(ncol = 39)                                                # Generate matrix to store counts of transitions
+counts_bpp_Organ         <- matrix(ncol = 39)                                                      # Generate matrix to store counts of transitions
 times_bpp_Organ          <- matrix(ncol = 2);colnames(times_bpp_Organ)<-c("mode","time")           # Generate matrix to store timing of transitions
 
 for (k in 1:100) {
@@ -345,7 +393,7 @@ for (k in 1:100) {
   aw                     <- H[,7];   aw<-aw[!is.na(aw)]                                            # "aw" is a vector with all the times of transition from air to water. aw as in air to water (i.e. loss of air-breathing)
   
   # Generate a dataframe (dataframe) with type of transition and their divergence times in first and second column
-  M                      <- matrix(ncol = 2,nrow = (length(aw)+length(wa)))                        
+  M                      <- matrix(ncol = 2,nrow = (length(aw)+length(wa)))                        # Matrix to store data      
   for (i in 1:length(wa)) { M[i,1]<-"WA"} 
   for (i in 1:length(aw)) { j=i+length(wa);  M[j,1]<-"AW"} 
   for (i in 1:length(wa)) { M[i,2]<-wa[i]} 
@@ -354,7 +402,7 @@ for (k in 1:100) {
   colnames(dataframe)    <- c("mode","time")
   dataframe$time         <- as.numeric(as.character(dataframe$time))
   times_bpp_Organ        <-na.omit(rbind(times_bpp_Organ,dataframe))
-  write.table(times_bpp_Organ,file = paste("./times_bpp_Organ.txt"))                                           # Save the timing of origins
+  write.table(times_bpp_Organ,file = paste("./times_bpp_Organ.txt"))                               # Save the timing of origins
 }
 
 ### OPTION B: LOADING PREVIOUSLY SAVED RUN
@@ -369,9 +417,6 @@ times_bpp_Organ          <-read.table("./times_bpp_Organ.txt")
 #### INDENTIFY CLADES WHERE AIR-BREATHING EVOLVED AND WAS LOST #### 
 ####         USING THE MAXIMUM CLADE CREDIBILITY TREE          ####
 ###################################################################
-
-
-
 # Requires around 10 GB of available memory, and takes around 6 hours for 1000 simulations
 
 nsim                     <- 1000                                                                   # Number of simulations 
@@ -379,9 +424,7 @@ model                    <- "ER"                                                
 
 SCM_mcc_Organ            <- make.simmap(tree=ge_tree,x=Organ,nsim=nsim,model=model)                # Run stochastic character mapping on MCC tree
 dSCM_mcc_Organ           <- describe.simmap(SCM_mcc_Organ)                                         # Summarize stochastic character mapping
-
-
-
+dSCM_mcc_Organ
 
 
 ##########################################################
@@ -390,7 +433,7 @@ dSCM_mcc_Organ           <- describe.simmap(SCM_mcc_Organ)                      
 ##########################################################
 
 
-### FIGURE 1+S1: CIRCULAR PHYLOGENY COLOR MAPPED WITH PROBABILITY FOR AIR-BREATHING
+### FIGURE 5+S1: CIRCULAR PHYLOGENY COLOR MAPPED WITH PROBABILITY FOR AIR-BREATHING
 # Prepare for plotting: Find edges where air-breathing was gained and lost
 hor                      <- as.data.frame(tree_layout(ge_tree)$edgeDT)                           # Extract divergence times from all internal nodes in the tree in the vector called "hor" (as in horizontal lines in the phylogeny)
 ACE                      <- cbind(dSCM_mcc_Organ$ace[,1],1-dSCM_mcc_Organ$ace[,1])               # Extract Bayesian posterior probabilities from all internal nodes in the tree
@@ -411,13 +454,13 @@ for (i in 1:length(H[,1])) { H[i,7] <- ifelse(H[i,4]>0.5&H[i,5]<0.5,            
                                               (0.5-lm(c(H[i,4],H[i,5])~c(H[i,1],H[i,2]))$coefficients[1])/lm(c(H[i,4],H[i,5])~c(H[i,1],H[i,2]))$coefficients[2],
                                               NA)}
 
-# Find the branches in the tree, where air-breathing originates (wa.edges) and is lost (aw.edges)
+# Find the branches in the tree, where air-breathing originates (wa.edges) and was lost (aw.edges)
 m                      <- cbind(hor$V1[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,6])==F))))],
                                 hor$V2[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,6])==F))))])
 l                      <- cbind(hor$V1[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,7])==F))))],
                                 hor$V2[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,7])==F))))])
 g                      <- as.data.frame(ge_tree$edge)
-
+signif(subset(as.data.frame(H),is.na(H[,7])==F),3)
 aw.edges<-matrix(ncol=1,nrow=length(m[,2]))
 for (i in 1:length(m[,1])) {
   aw.edges[i]          <-rownames(subset(g,g$V1==m[i,1]&g$V2==m[i,2]))
@@ -428,19 +471,26 @@ for (i in 1:length(l[,1])) {
   wa.edges[i]          <-rownames(subset(g,g$V1==l[i,1]&g$V2==l[i,2]))
 }
 
+#pdf(file = paste("./Figures/Fig. S1 for AR_2.pdf",sep = ""),width = 50,height = 50,useDingbats = F)
+#plot(ge_tree,lwd = 0.5,fsize = 0.03,ftype = "i",show.tip.label = T,type = "fan",legend=F)
+#edgelabels(text = length(wa.edges):1,frame="circle",bg=cols[2],edge=as.numeric(as.vector(wa.edges)))
+#edgelabels(text = length(aw.edges):1,frame="circle",bg=cols[1],edge=as.numeric(as.vector(aw.edges)))
+#dev.off()
+
+
 # Save a density plot
-obj                    <-densityMap(mergeMappedStates(tree = SCM_mcc_Organ,
-                                                      old.states = c("Lung","Swimbladder","GIT","Mouth","Skin"),"ABO"),
+obj                      <-densityMap(mergeMappedStates(tree = SCM_mcc_Organ,
+                                                        old.states = c("Lung","Swimbladder","GIT","Mouth","Skin"),"ABO"),
                                     plot=FALSE,states=c("ABO","Gill"),
                                     res=1000)
-obj$cols[1:1001]       <-colorRampPalette(cols[2:1], space="Lab")(1001)                          # Change color theme to acta colors
+obj$cols[1:1001]         <-colorRampPalette(cols[2:1], space="Lab")(1001)                          # Change color theme to Acta colors
 
 # Fake plot used to (somehow) activate the axis function
 plot(obj,lwd = 0.5,fsize = 0.1,ftype = "i",show.tip.label = F,type = "fan",legend=F)
 axis_obj<-axis(1,pos=0,at=seq(max(nodeHeights(obj$tree)),100,by=-100),cex.axis=0.5,labels=FALSE)
 
-# Plot Fig. 1
-pdf(file = "./Figures/Fig. 1.pdf",width = 19/2.54,height = 19/2.54,useDingbats = F)                # PDF saving options
+# Plot Fig. 5
+pdf(file = "./Figures/Figure 5 - air-breathing evolution.pdf",width = 19/2.54,height = 19/2.54,useDingbats = F)                # PDF saving options
 plot(obj,lwd = 1,fsize = .000001,ftype = "i",show.tip.label = F,type = "fan",legend=F,no.margin=T) # Plot density map
 for(i in 1:length(axis_obj)){                                                                      # Plot circular time axis
   a1<-0
@@ -461,7 +511,7 @@ obj_2$tree$tip.label     <- paste(obj_2$tree$tip.label," (",
                                   sep = "")                                                        # Change tip labels to include genus, family and order
 
 # Plot and save Fig. S1
-pdf(file = paste("./Figures/Fig. S1.pdf",sep = ""),width = 50,height = 50,useDingbats = F)
+pdf(file = paste("./Figures/Figure S1 - air-breathing evolution.pdf",sep = ""),width = 50,height = 50,useDingbats = F)
 plot(obj_2,lwd = 1.5,fsize = .2,show.tip.label = F,type = "fan",legend=F,no.margin=T)
 for(i in 1:length(axis_obj)){
   a1<-0
@@ -469,18 +519,20 @@ for(i in 1:length(axis_obj)){
   draw.arc(0,0,radius=axis_obj[i]-100,angle1 = a1,angle2 = a2,lwd=0.1,lty="dashed",
            col=make.transparent("black",0.5))  
 }
-edgelabels(pch=21,bg=cols[2],cex=3,edge=as.numeric(as.vector(wa.edges)))
-edgelabels(pch=21,bg=cols[1],cex=3,edge=as.numeric(as.vector(aw.edges)))
+edgelabels(pch=21,bg=cols[2],cex=1.5,edge=as.numeric(as.vector(wa.edges)))
+edgelabels(pch=21,bg=cols[1],cex=1.5,edge=as.numeric(as.vector(aw.edges)))
 dev.off()
 
 
 
-### FIGURE 2 
+
+
+### FIGURE 6 
 # Individual panels are set up as a function, so they can be arranged in a matrix below. 
 # Each function has 1 option: Save F (plots the figure) or T (saves the figure)
 
-### FIG. 2A: COMBINED HISTROGRAM OF GAINS AND LOSSES
-Fig.2A<-function(save){
+### FIG. 6A: COMBINED HISTROGRAM OF GAINS AND LOSSES
+Fig.6A<-function(save){
   
   # These lines make a data frame (df) with the type of transition in first column and the number of those transitions in the second column
   gains                  <- counts_bpp_Organ$gains                                                 # Vector with the number of gains of air-breathing
@@ -530,18 +582,18 @@ Fig.2A<-function(save){
                                  "AW" = unname(cols[1])))+
     labs(y = expression("%"),x = expression(bold("Number of transitions")))->plot
   if(save==T) {
-    ggsave(filename = "Fig. 2A.pdf",width = 4,height = 4,units = "cm",path = "./Figures/")
+    ggsave(filename = "Fig. 6A.pdf",width = 6,height = 6,units = "cm",path = "./Figures/")
   }
   if(save==F){
     return(plot)
   }
 }
-Fig.2A(F)
-Fig.2A(T)
+Fig.6A(F)
+Fig.6A(T)
 
 
-## FIG. 2B: Timing of gains and losses
-Fig.2B<-function(save){
+## FIG. 6B: Timing of gains and losses
+Fig.6B<-function(save){
   
   plot<-ggplot(data=times_bpp_Organ, aes(x=mode, y=time,fill=mode)) +
     
@@ -569,77 +621,28 @@ Fig.2B<-function(save){
     coord_flip()
   plot  
   if(save==T) {
-    ggsave(filename = "Fig. 2B.pdf",width = 4,height = 4,units = "cm",path = "./Figures/")
+    ggsave(filename = "Fig. 6B.pdf",width = 6,height = 6,units = "cm",path = "./Figures/")
   }
   if(save==F){
     return(plot)
   }
 }
-Fig.2B(F)
-Fig.2B(T)
+Fig.6B(F)
+Fig.6B(T)
 
-### FIG. 2C: AIR-BREATHING EVOLUTION IN EARLY FISHES
-Fig.2C<-function(save){
-  
-  # Generate of pruned phylogeny of representative species of each clade
-  ef_tree                  <- keep.tip(tree = ge_tree,tip = c("Latimeria","Protopterus","Polypterus","Acipenser","Amia","Anguilla"))
-  
-  # Name the internal branches
-  node.label               <- c("Osteichthyes","Actinopterygii","Actinopteri","Neopterygii","Sarcopterygii")
-  
-  # Set the Root node length
-  ef_tree$root.edge        <- 50
-  
-  # Extract BPP for air-breathing from stochastic character mapping
-  ACE                      <- dSCM_mcc_Organ$ace
-  ACE                      <- cbind(ACE[,1],1-ACE[,1])
-  
-  # Find the BPP for air-breathing in the corresponding internal branches in the pruned phylogeny
-  internal_pies          <- rbind(ACE[match(getMRCA(ge_tree,c("Latimeria","Protopterus")),row.names(ACE)),], # MRCA of sarcopterygeii (lobe finned fishes)
-                                  ACE[match(getMRCA(ge_tree,c("Latimeria","Anguilla")),row.names(ACE)),],    # MRCA of osteichthyes (bony fishes)
-                                  ACE[match(getMRCA(ge_tree,c("Polypterus","Anguilla")),row.names(ACE)),],   # MRCA of actinopterygii (ray finned fishes)
-                                  ACE[match(getMRCA(ge_tree,c("Acipenser","Anguilla")),row.names(ACE)),],    # MRCA of acipenseri
-                                  ACE[match(getMRCA(ge_tree,c("Amia","Anguilla")),row.names(ACE)),])         # MRCA of neopterygii
-  row.names(internal_pies) <- node.label
-  
-  # Find the breathing mode on the extant species in the pruned phylogeny
-  external_pies            <- to.matrix(AW[ef_tree$tip.label],seq=sort(unique(AW)))
-  row.names(external_pies) <- c("Polypterus","Sturgeons","Amia & Gars","Teleosts","Coelacanths","Lungfishes")
-  
-  # Rename the extant species in the pruned phylogeny
-  ef_tree$tip.label<-c("Polypterus","Sturgeons","Amia & Gars","Teleosts","Coelacanths","Lungfishes")
-  
-  # Save figure 2C as PDF
-  if(save==T) {
-    pdf("./Figures/Fig. 2C.pdf",width = 4/2.54,height = 3/2.54,bg = cols[3],pointsize = 6,useDingbats = F)
-    plot(ef_tree,root.edge = T,type = "cladogram",use.edge.length = F,
-         show.node.label = F,
-         show.tip.label=T,
-         no.margin = T,
-         label.offset = .5)
-    nodelabels(pie = internal_pies, piecol = cols[c(1,2)], cex = 1.2)
-    tiplabels(pie=external_pies,
-              piecol=cols[c(2,1)],cex=1.2)
-    dev.off()
-  }
-  if(save==F){
-    plot(ef_tree,root.edge = T,type = "cladogram",use.edge.length = F,
-         show.node.label = F,
-         show.tip.label=T,
-         no.margin = T,
-         label.offset = .5)
-    nodelabels(pie = internal_pies, piecol = cols[c(1,2)], cex = 1.5)
-    tiplabels(pie=external_pies,
-              piecol=cols[c(2,1)],cex=1.5)
-  }
-}
-Fig.2C(F)
-Fig.2C(T)
 
-## FIG. 2D: EVOLUTIONARY TRAJECTORY OF BREATHING MODE CONNECTING THE MRCA OF BONY FISHES AND AN EXTANT GENUS
+
+
+
+
+
+
+
+
+## FIG. 6C: EVOLUTIONARY TRAJECTORY OF BREATHING MODE CONNECTING THE MRCA OF BONY FISHES AND AN EXTANT GENUS
 # The number specify a genus in the phylogeny (see ge_tree$tip.label), where number 200 is Brienomyrus 
 
-Fig.2D<-function(number,save){
+Fig.6C<-function(number,save){
   s<-number
   
   # Extract ancestral states for air-breathing
@@ -697,15 +700,87 @@ Fig.2D<-function(number,save){
          x = "Time before present (MYA)")
   
   if(save==T) {
-    ggsave(filename = "Fig. 2D.pdf",width = 4/2.54,height = 4/2.54,units = "in",path = "./Figures/")
+    ggsave(filename = "Fig. 6C.pdf",width = 6/2.54,height = 6/2.54,units = "in",path = "./Figures/")
   }
   if(save==F){
     return(plot)
   }
 }
 
-Fig.2D(200,T)
-Fig.2D(200,F)
+Fig.6C(200,T)
+Fig.6C(200,F)
+
+
+
+
+
+
+
+## FIGURE 7: Evolution of air-breathing in early fishes
+
+# Build tree
+ef_tree                  <- keep.tip(tree = ge_tree,tip = c("Latimeria","Protopterus","Polypterus","Acipenser","Amia","Anguilla"))
+
+# Name the internal branches
+ef_tree$node.label       <- c("Osteichthyes","Actinopterygii","Actinopteri","Neopterygii","Sarcopterygii")
+
+# Set the Root node length
+ef_tree$root.edge        <- 50
+
+# Extract BPP for air-breathing from stochastic character mapping
+ACE                      <- dSCM_mcc_Organ$ace
+ACE                      <- cbind(ACE[,1],1-ACE[,1])
+
+# Find the BPP for air-breathing in the corresponding internal branches in the pruned phylogeny
+internal_pies          <- rbind(ACE[match(getMRCA(ge_tree,c("Latimeria","Protopterus")),row.names(ACE)),], # MRCA of sarcopterygeii (lobe finned fishes)
+                                ACE[match(getMRCA(ge_tree,c("Latimeria","Anguilla")),row.names(ACE)),],    # MRCA of osteichthyes (bony fishes)
+                                ACE[match(getMRCA(ge_tree,c("Polypterus","Anguilla")),row.names(ACE)),],   # MRCA of actinopterygii (ray finned fishes)
+                                ACE[match(getMRCA(ge_tree,c("Acipenser","Anguilla")),row.names(ACE)),],    # MRCA of acipenseri
+                                ACE[match(getMRCA(ge_tree,c("Amia","Anguilla")),row.names(ACE)),])         # MRCA of neopterygii
+row.names(internal_pies) <- node.label
+
+
+external_pies<-
+  rbind(
+    ACE[match(getMRCA(ge_tree,c("Erpetoichthys","Polypterus")),row.names(ACE)),],
+    ACE[match(getMRCA(ge_tree,c("Psephurus", "Polyodon", "Scaphirhynchus", "Pseudoscaphirhynchus", "Huso", "Acipenser")),row.names(ACE)),],
+    ACE[match(getMRCA(ge_tree,c("Amia", "Lepisosteus")),row.names(ACE)),],
+    ACE[match(getMRCA(ge_tree,c("Elops","Perca")),row.names(ACE)),],
+    ACE[match(getMRCA(ge_tree,c("Neoceratodus","Protopterus")),row.names(ACE)),],
+    c(1,0)
+  )
+
+row.names(external_pies)<- 
+  c("MRCA of bichirs and reedfishes",
+    "MRCA of sturgeons and paddlefishes",
+    "MRCA of bowfin and gars",
+    "MRCA of teleosts",
+    "MRCA of lungfishes",
+    "Extant coelacanths")
+external_pies
+
+
+# Rename the tip labels in the pruned phylogeny
+ef_tree$tip.label<-c("MRCA of bichirs and reedfishes",
+                     "MRCA of sturgeons and paddlefishes",
+                     "MRCA of bowfin and gars",
+                     "MRCA of teleosts",
+                     "MRCA of lungfishes",
+                     "Extant coelacanths")
+
+# Save figure 7 as PDF
+
+pdf("./Figures/Figure 7 - early fishes.pdf",width = 14/2.54,height = 14/2.54,useDingbats = F)
+par(mar=c(2,2,2,2))
+plot(ef_tree,root.edge = T,type = "cladogram",use.edge.length = F,edge.width = 1,
+     show.node.label = F,
+     show.tip.label=F,
+     #no.margin = T,
+     label.offset = .5)
+nodelabels(pie = internal_pies, piecol = cols[c(1,2)], cex = 1.7)
+tiplabels(pie=external_pies,
+          piecol=cols[c(1,2)],cex=1.7)
+dev.off()
 
 
 
@@ -764,7 +839,7 @@ y.grob                 <- textGrob("Frequency", gp=gpar(fontface="bold", fontsiz
 x.grob                 <- textGrob("Number of transitions", gp=gpar(fontface="bold", fontsize=12))
 
 # Save af PDF
-pdf("./Figures/Fig. S2.pdf",width = 7.7/2.54,height = 7.7/2*6/2.5,useDingbats = F)
+pdf("./Figures/Figure S2 - frequency distributions.pdf",width = 7.7/2.54,height = 7.7/2*6/2.5,useDingbats = F)
 grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 dev.off()
 
@@ -884,16 +959,11 @@ dSCM_mcc_LS              <- describe.simmap(SCM_mcc_LS)                         
 #### REQUIRES THAT SECTION 3-4 HAS BEEN RUN OR LOADED ####
 ##########################################################
 
-
-
-
-
-
-
-### FIGURE 3+S2: CIRCULAR PHYLOGENY COLOR MAPPED WITH PROBABILITY FOR AMPHIBIOUSNESS
+head(dSCM_mcc_LS$ace)
+### FIGURE 7+S3: CIRCULAR PHYLOGENY COLOR MAPPED WITH PROBABILITY FOR AMPHIBIOUSNESS
 # Prepare for plotting: Find edges where air-breathing was gained and lost
 hor                      <- as.data.frame(tree_layout(ge_tree)$edgeDT)                           # Extract divergence times from all internal nodes in the tree in the vector called "hor" (as in horizontal lines in the phylogeny)
-ACE                      <- cbind(dSCM_mcc_LS$ace[,1],1-SCM_mcc_LS$ace[,1])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
+ACE                      <- cbind(dSCM_mcc_LS$ace[,2],1-dSCM_mcc_LS$ace[,2])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
 
 H<-matrix(nrow = length(hor$V1), ncol = 7)                                                       # Generate a matrix for data storage, where each row contains an edge in the tree
 for (i in 1:length(H[,1])) { H[i,1] <- max(hor$xright)-hor$xleft[i] }                            # Edge goes from this age
@@ -902,7 +972,7 @@ for (i in 1:length(H[,1])) { H[i,3] <- mean(H[i,1],H[i,2]) }                    
 for (i in 1:length(H[,1])) { H[i,4] <- ACE[match(hor$V1[i],row.names(ACE))]}                     # Bayesian posterior probability at first point of the edge
 for (i in 1:length(H[,1])) { H[i,5] <- ACE[match(hor$V2[i],row.names(ACE))]}                     # Bayesian posterior probability at second point of the edge
 for (i in 1:length(H[,1])) { H[i,5] <- ifelse(is.na(ACE[match(hor$V2[i],row.names(ACE))])==T,    # If the edge ends in an extant species, set Bayesian posterior probability to 1 for amphibious and to 0 for aquatic
-                                              unname(ifelse(LS[match(ge_tree$tip[hor$V2[i]],names(LS))]=="Am",1,0)),
+                                              unname(ifelse(LS[match(ge_tree$tip[hor$V2[i]],names(LS))]=="Aq",1,0)),
                                               H[i,5])} 
 for (i in 1:length(H[,1])) { H[i,6] <- ifelse(H[i,4]<0.5&H[i,5]>0.5,                             # If Bayesian posterior probability changes between <0.5 and >0.5, find the time where Bayesian posterior probability is 0.5 (i.e. time of the origin of amphibiousness). 
                                               (0.5-lm(c(H[i,4],H[i,5])~c(H[i,1],H[i,2]))$coefficients[1])/lm(c(H[i,4],H[i,5])~c(H[i,1],H[i,2]))$coefficients[2],
@@ -913,7 +983,7 @@ for (i in 1:length(H[,1])) { H[i,7] <- ifelse(H[i,4]>0.5&H[i,5]<0.5,            
 
 
 
-# Find the branches in the tree, where amphibiousness originates (wa.edges) and is lost (aw.edges)
+# Find the branches in the tree, where amphibiousness originated (wa.edges) and was lost (aw.edges)
 m                      <- cbind(hor$V1[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,6])==F))))],
                                 hor$V2[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,6])==F))))])
 l                      <- cbind(hor$V1[as.numeric(row.names((subset(as.data.frame(H),is.na(H[,7])==F))))],
@@ -934,45 +1004,44 @@ if (length(l>0)){
 
 
 # Save a density plot
-obj<-densityMap(SCM_mcc_LS,res=1000)
-obj$cols[1:1001]<-colorRampPalette(cols[2:1], space="Lab")(1001)
+obj_3<-densityMap(SCM_mcc_LS,res=1000)
+obj_3$cols[1:1001]<-colorRampPalette(cols[2:1], space="Lab")(1001)
 
 # Fake plot used to (somehow) active the axis function
-plot(obj,lwd = 0.5,fsize = 0.1,ftype = "i",show.tip.label = F,type = "fan",legend=F)
+plot(obj_3,lwd = 0.5,fsize = 0.1,ftype = "i",show.tip.label = F,type = "fan",legend=F)
 axis_obj<-axis(1,pos=0,at=seq(max(nodeHeights(obj$tree)),100,by=-100),cex.axis=0.5,labels=FALSE)
 
-# Plot Fig. 3
-pdf(file = "./Figures/Fig. 3.pdf",width = 19/2.54,height = 19/2.54,useDingbats = F)                              # PDF saving options
-plot(obj,lwd = 1,fsize = .000001,ftype = "i",show.tip.label = F,type = "fan",legend=F,no.margin=T)# Plot density map
+# Plot Fig. 9
+pdf(file = "./Figures/Figure 9 - amphibious evolution.pdf",width = 19/2.54,height = 19/2.54,useDingbats = F)                              # PDF saving options
+plot(obj_3,lwd = 1,fsize = .000001,ftype = "i",show.tip.label = F,type = "fan",legend=F,no.margin=T)# Plot density map
 for(i in 1:length(axis_obj)){                                                                    # Plot circular time axis
   a1<-0
   a2<-2*3.141528
   draw.arc(0,0,radius=axis_obj[i]-100,angle1 = a1,angle2 = a2,lwd=0.5,lty="dashed",col=make.transparent("black",0.5))}
-if (length(l>0)){edgelabels(pch=21,bg=cols[1],cex=2,edge=as.numeric(as.vector(wa.edges)))}                       # Add red dot on edges where amphibiousness evolved
-edgelabels(pch=21,bg=cols[2],cex=2,edge=as.numeric(as.vector(aw.edges)))                       # Add red blue on edges where amphibiousness was lost
+if (length(l>0)){edgelabels(pch=21,bg=cols[2],cex=2,edge=as.numeric(as.vector(wa.edges)))}                       # Add red dot on edges where amphibiousness evolved
+edgelabels(pch=21,bg=cols[1],cex=2,edge=as.numeric(as.vector(aw.edges)))                       # Add red blue on edges where amphibiousness was lost
 dev.off()
 
 
 
 ### Fig. S3
 # Large sized density map with genus, family and order names (Fig. S1)
-obj_2<-obj                                                                                       # Copy the first density map
-obj_2$tree$tip.label     <- paste(obj_2$tree$tip.label," (",
-                                  as.character(tax[match(obj_2$tree$tip.label,tax$genus),1]),", ",
-                                  as.character(tax[match(obj_2$tree$tip.label,tax$genus),2]),")",
+obj_4<-obj_3                                                                                      # Copy the first density map
+obj_4$tree$tip.label     <- paste(obj_4$tree$tip.label," (",
+                                  as.character(tax[match(obj_4$tree$tip.label,tax$genus),1]),", ",
+                                  as.character(tax[match(obj_4$tree$tip.label,tax$genus),2]),")",
                                   sep = "")                                                      # Change tip labels to include genus, family and order
 
 # Plot and save Fig. S3
-pdf(file = paste("./Figures/Fig. S3.pdf",sep = ""),width = 50,height = 50,useDingbats = F)
-plot(obj_2,lwd = 1.5,fsize = .2,show.tip.label = F,type = "fan",legend=F,no.margin=T)
+pdf(file = paste("./Figures/Figure S3 - amphbious evolution",sep = ""),width = 50,height = 50,useDingbats = F)
+plot(obj_4,lwd = 1.5,fsize = .2,show.tip.label = F,type = "fan",legend=F,no.margin=T)
 for(i in 1:length(axis_obj)){
   a1<-0
   a2<-2*3.141528
   draw.arc(0,0,radius=axis_obj[i]-100,angle1 = a1,angle2 = a2,lwd=0.1,lty="dashed",
            col=make.transparent("black",0.5))  
 }
-#edgelabels(pch=21,bg=cols[2],cex=3,edge=as.numeric(as.vector(wa.edges)))
-edgelabels(pch=21,bg=cols[1],cex=3,edge=as.numeric(as.vector(aw.edges)))
+edgelabels(pch=21,bg=cols[2],cex=2,edge=as.numeric(as.vector(wa.edges)))
 dev.off()
 
 
@@ -986,11 +1055,11 @@ dev.off()
 #### ANSWERS TO QUESTIONS ASKED IN THE MANUSCRIPT ####
 ######################################################  
 
-# How many percent of air-breathing origins occured within the last 100 MYA?
-100*sum(ifelse(subset(times_bpp_Organ,mode =="AW")$time<100,1,0))/length(subset(times_bpp_Organ,mode =="AW")$time)
+# How many percent of air-breathing origins occured within the last 65 MYA?
+100*sum(ifelse(subset(times_bpp_Organ,mode =="AW")$time<65,1,0))/length(subset(times_bpp_Organ,mode =="AW")$time)
 
-# How many percent of amphibious origins occured within the last 100 MYA?
-100*sum(ifelse(subset(times_bpp_LS,mode =="WA")$time<100,1,0))/length(subset(times_bpp_LS,mode =="WA")$time)
+# How many percent of amphibious origins occured within the last 65 MYA?
+100*sum(ifelse(subset(times_bpp_LS,mode =="WA")$time<65,1,0))/length(subset(times_bpp_LS,mode =="WA")$time)
 
 ## Which transitions among air-breathing organs significantly different from zero. TRUE for not different from zero. 
 W                      <- cbind(colnames(counts_bpp_Organ),rep(NA,39),rep(NA,39))                        # Empty data frame for data storage
@@ -1019,17 +1088,23 @@ t.test(counts_bpp_Organ$gains,counts_bpp_LS$Aq.Am)
 
 
 # What is the probability for water- and air-breathing in the MRCA of bony fishes?
-ACE                      <- cbind(dSCM_mcc_Organ$ace[,1],1-SCM_mcc_Organ$ace[,1])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
-ACE[1,]
+node<-which(rownames(dSCM_mcc_Organ$ace)==getMRCA(ge_tree,c("Neoceratodus","Amia")))
+ACE                      <- cbind(dSCM_mcc_Organ$ace[node,1],1-dSCM_mcc_Organ$ace[node,1])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
+ACE
 
 # What is the probability for Amphibiousness in the MRCA of bony fishes?
 ACE                      <- cbind(dSCM_mcc_LS$ace[,1],1-SCM_mcc_LS$ace[,1])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
-ACE[1,]
+ACE
 
+node<-which(rownames(dSCM_mcc_LS$ace)==getMRCA(ge_tree,c("Neoceratodus","Amia")))
+ACE                      <- cbind(dSCM_mcc_LS$ace[node,1],1-dSCM_mcc_LS$ace[node,1])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
+ACE
 
-
-
-
+# What is the probability for the gastrointestinal tract being the air-breathing organ in the most recent common ancestor of Loricariidae?
+node<-which(rownames(dSCM_mcc_Organ$ace)==getMRCA(ge_tree,c("Corydoras","Microlepidogaster")))
+ACE                      <- cbind(dSCM_mcc_Organ$ace[node,2],1-dSCM_mcc_Organ$ace[node,2])                      # Extract Bayesian posterior probabilities from all internal nodes in the tree
+ACE
+# 83.1% probability that the GIT was the ABO of the MRCA of loricariidae
 
 
 ###################################################
@@ -1100,7 +1175,7 @@ ggplot(df1,aes(x = PO2,y=Onset,col=Species))+
   annotate(geom = "text",x = 15,y = 40.2,label = "Trichopodus trichopterus",fontface = 'italic',hjust = 0,size=12/3)+
   labs(y = expression("Onset of air-breathing (days)"),
        x = expression("Rearing PO"[2]*" (kPa)"))->p1;p1
-ggsave(paste("./Figures/Figure 2.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
+ggsave(paste("./Figures/Figure 4.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
 
 
 
@@ -1135,7 +1210,7 @@ ggplot(df2,aes(x = PO2,y=lsa,col=Species))+
   scale_x_continuous(breaks = c(14,17,20))+
   labs(y = expression("Total lamellar surface area (mm"^"2"*")"),
        x = expression("Rearing PO"[2]*" (kPa)"))->p2;p2
-ggsave(paste("./Figures/Fig. 1A.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
+ggsave(paste("./Figures/Fig. 3A.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
 
 
 labels<-c("A","B","A",rep("a",3))
@@ -1161,5 +1236,23 @@ ggplot(df2,aes(x = PO2,y=abo,col=Species))+
   scale_x_continuous(breaks = c(14,17,20))+
   labs(y = expression("Total labyrinth surface area (mm"^"2"*")"),
        x = expression("Rearing PO"[2]*" (kPa)"))->p3;p3
-ggsave(paste("./Figures/Fig. 1B.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
+ggsave(paste("./Figures/Fig. 3B.pdf",sep = ""),height = 7.7/2.54,width = 7.7/2.54)
+
+
+
+# Figure panel for Fig. 10 (makes 50 different plots - chose the one that looks best)
+for (i in 1:50){
+  random.tree<-
+    pbtree(n=10)
+  char<-setNames(object = c("B","B","A","A","A","A","A","A","A","A"),nm = random.tree$tip.label)
+  
+  simmap<-make.simmap(random.tree,char,nsim = 100,model = "ER")
+  
+  obj_5<-densityMap(simmap,legend = F)
+  obj_5$cols[1:1001]         <-colorRampPalette(cols[1:2], space="Lab")(1001)                          # Change color theme to Acta colors
+  
+  pdf(paste("./Figures/Fig10/Figure 10_",i,".pdf"),width = 7/2.54,height = 7/2.54,useDingbats = F)
+  plot(obj_5,lwd = 3,fsize = .000001,ftype = "i",show.tip.label = F,legend=F,no.margin=T,use.edge.lengths = F)# Plot density map
+  dev.off()
+}
 
